@@ -106,6 +106,9 @@ class gNMIclient(object):
         if "keepalive_time_ms" in kwargs:
             self.configureKeepalive(**kwargs)
 
+        # Used for per-thread stub
+        self.__per_thread = threading.local()
+
     def configureKeepalive(
         self,
         keepalive_time_ms: int,
@@ -134,6 +137,15 @@ class gNMIclient(object):
         (used in the with ... as ... context manager)
         """
         return self.connect()
+
+    def __get_stub__(self):
+        """
+        Internal method to lazily create a per-thread gNMI stub instance.
+        All stubs share the same underlying channel/connection
+        """
+        if not self.__per_thread.stub:
+            self.__per_thread.stub = gNMIStub(self.__channel)
+        return self.__per_thread.stub
 
     def connect(self, timeout: int = None):
         """
@@ -257,7 +269,7 @@ class gNMIclient(object):
             timeout = self.__gnmi_timeout
         if timeout is None or timeout > 0:
             self.wait_for_connect(timeout)
-        self.__stub = gNMIStub(self.__channel)
+        # stub = gNMIStub(self.__channel)
 
         caps = self.capabilities()
         if "supported_encodings" in caps:
@@ -305,7 +317,7 @@ class gNMIclient(object):
             gnmi_message_request = CapabilityRequest()
             debug_gnmi_msg(self.__debug, gnmi_message_request, "gNMI request")
 
-            gnmi_message_response = self.__stub.Capabilities(gnmi_message_request, metadata=self.__metadata)
+            gnmi_message_response = self.__get_stub__().Capabilities(gnmi_message_request, metadata=self.__metadata)
             debug_gnmi_msg(self.__debug, gnmi_message_response, "gNMI response")
 
             if gnmi_message_response:
@@ -429,7 +441,7 @@ class gNMIclient(object):
             gnmi_message_request = GetRequest(prefix=protobuf_prefix, path=protobuf_paths, type=pb_datatype, encoding=pb_encoding)
             debug_gnmi_msg(self.__debug, gnmi_message_request, "gNMI request")
 
-            gnmi_message_response = self.__stub.Get(gnmi_message_request, metadata=self.__metadata)
+            gnmi_message_response = self.__get_stub__().Get(gnmi_message_request, metadata=self.__metadata)
             debug_gnmi_msg(self.__debug, gnmi_message_response, "gNMI response")
 
             if gnmi_message_response:
@@ -613,7 +625,7 @@ class gNMIclient(object):
             )
             debug_gnmi_msg(self.__debug, gnmi_message_request, "gNMI request")
 
-            gnmi_message_response = self.__stub.Set(gnmi_message_request, metadata=self.__metadata)
+            gnmi_message_response = self.__get_stub__().Set(gnmi_message_request, metadata=self.__metadata)
             debug_gnmi_msg(self.__debug, gnmi_message_response, "gNMI response")
 
             if gnmi_message_response:
@@ -873,7 +885,7 @@ class gNMIclient(object):
             gnmi_message_request = self._build_subscriptionrequest(subscribe)
             debug_gnmi_msg(self.__debug, gnmi_message_request, "gNMI request")
 
-        return self.__stub.Subscribe(self.__generator(gnmi_message_request), metadata=self.__metadata)
+        return self.__get_stub__().Subscribe(self.__generator(gnmi_message_request), metadata=self.__metadata)
 
     def subscribe2(self, subscribe: dict, target: str = None, extension: list = None):
         """
