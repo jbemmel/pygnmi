@@ -143,9 +143,12 @@ class gNMIclient(object):
         Internal method to lazily create a per-thread gNMI stub instance.
         All stubs share the same underlying channel/connection
         """
-        if not self.__per_thread.stub:
-            self.__per_thread.stub = gNMIStub(self.__channel)
-        return self.__per_thread.stub
+        try:
+            if not self.__per_thread.stub:
+                self.__per_thread.stub = gNMIStub(self.__channel)
+            return self.__per_thread.stub
+        except Exception as e:
+            logger.error(f"__get_stub__ failed: {e}")
 
     def connect(self, timeout: int = None):
         """
@@ -359,8 +362,8 @@ class gNMIclient(object):
             logger.critical(f"GRPC ERROR Host: {self.__target_path}, Error: {err.details()}")
             raise gNMIException(f"GRPC ERROR Host: {self.__target_path}, Error: {err.details()}", err)
 
-        except:
-            logger.error("Collection of Capabilities is failed.")
+        except Exception as e:
+            logger.error(f"Collection of Capabilities failed: {e}")
 
             return None
 
