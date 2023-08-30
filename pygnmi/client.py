@@ -144,7 +144,7 @@ class gNMIclient(object):
         All stubs share the same underlying channel/connection
         """
         try:
-            if not self.__per_thread.stub:
+            if not hasattr(self.__per_thread, 'stub'):
                 self.__per_thread.stub = gNMIStub(self.__channel)
             return self.__per_thread.stub
         except Exception as e:
