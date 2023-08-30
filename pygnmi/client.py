@@ -708,7 +708,7 @@ class gNMIclient(object):
             if isinstance(grpc_error, grpc._channel._InactiveRpcError):
                 # May happen e.g. during system startup or due to lock contention, retry once
                 if grpc_error.code() == grpc.StatusCode.FAILED_PRECONDITION:
-                    logger.warning("FAILED_PRECONDITION exception during set, retrying in {retry_delay}s...")
+                    logger.warning(f"FAILED_PRECONDITION exception during set, retrying in {retry_delay}s...")
                     time.sleep(retry_delay)
 
                     return self.set(delete=delete, replace=replace, update=update, encoding=encoding)
