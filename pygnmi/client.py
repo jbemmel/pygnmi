@@ -73,6 +73,7 @@ class gNMIclient(object):
         show_diff: str = None,
         token: str = None,
         no_qos_marking: bool = False,
+        use_lock: bool = False,
         **kwargs,
     ):
         """
@@ -108,6 +109,7 @@ class gNMIclient(object):
 
         # Used for per-thread stub
         self.__per_thread = threading.local()
+        self.__lock = threading.Lock() if use_lock else None
 
     def configureKeepalive(
         self,
@@ -628,7 +630,12 @@ class gNMIclient(object):
             )
             debug_gnmi_msg(self.__debug, gnmi_message_request, "gNMI request")
 
-            gnmi_message_response = self.__get_stub__().Set(gnmi_message_request, metadata=self.__metadata)
+            # If requested, use exclusive lock to avoid multiple parallel Set requests
+            if self.__lock:
+                with self.__lock:
+                    gnmi_message_response = self.__get_stub__().Set(gnmi_message_request, metadata=self.__metadata)
+            else:
+                gnmi_message_response = self.__get_stub__().Set(gnmi_message_request, metadata=self.__metadata)
             debug_gnmi_msg(self.__debug, gnmi_message_response, "gNMI response")
 
             if gnmi_message_response:
